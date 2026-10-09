@@ -9,6 +9,21 @@ description:
     en_US: Generate video from a prompt; defaults to 5s, 480P, no prompt expansion.
     zh_Hans: 输入提示词生成视频，默认5秒、480P、关闭扩写。
   llm: Generate a video using minimax/h3-max/text-to-video.
+output_schema:
+  type: object
+  properties:
+    video_url:
+      type: string
+      description: "Public HTTPS video URL to use directly in the next merge node"
+    media_url:
+      type: string
+      description: "Public HTTPS output URL"
+    request_id:
+      type: string
+      description: "Fal request identifier"
+    status:
+      type: string
+      description: "Final Fal task status"
 parameters:
 - name: prompt
   type: string
