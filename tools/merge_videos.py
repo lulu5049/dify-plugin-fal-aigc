@@ -2,12 +2,12 @@ from collections.abc import Generator
 from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
-from tools.fal_common import MODELS, completed_generation, parse_video_urls
+from tools.fal_common import MODELS, completed_generation, collect_merge_video_urls
 
 class MergeVideosTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
-            urls = parse_video_urls(tool_parameters.get('video_urls'))
+            urls = collect_merge_video_urls(tool_parameters)
             payload = {'video_urls': urls}
             fps = tool_parameters.get('target_fps')
             if fps is not None and fps != '' and float(fps) > 0:
