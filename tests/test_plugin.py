@@ -121,7 +121,8 @@ def test_model_specific_payloads(monkeypatch):
         (text_to_video.TextToVideoTool, {'prompt': 'move'}),
         (image_to_video.ImageToVideoTool, {'prompt': 'move', 'image_url': 'https://example.com/a.png'}),
         (generate_image.GenerateImageTool, {'prompt': 'picture'}),
-        (merge_videos.MergeVideosTool, {'video_urls': '["https://example.com/1.mp4","https://example.com/2.mp4"]'}),
+        (merge_videos.MergeVideosTool, {'video_url_1': 'https://example.com/1.mp4',
+                                      'video_url_2': 'https://example.com/2.mp4'}),
     ]:
         inst = cls()
         inst.runtime = Creds()
@@ -285,24 +286,24 @@ def test_merge_requires_both_first_two_urls_even_with_extras():
     url = 'https://v3.fal.media/video.mp4'
     with pytest.raises(fal_common.FalError, match='Video 1 URL is required'):
         fal_common.collect_merge_video_urls({
-            'video_url_2': url, 'video_urls': url + '\\n' + url
+            'video_url_2': url, 'video_urls': url + '\n' + url
         })
     with pytest.raises(fal_common.FalError, match='Video 2 URL is required'):
         fal_common.collect_merge_video_urls({
-            'video_url_1': url, 'video_urls': url + '\\n' + url
+            'video_url_1': url, 'video_urls': url + '\n' + url
         })
 
 
 def test_merge_five_fields_followed_by_unlimited_extra_urls():
     entries = [f'https://v3.fal.media/clip{n}.mp4' for n in range(1, 10)]
     params = {f'video_url_{n}':entries[n - 1] for n in range(1, 6)}
-    params['video_urls'] = '\\n'.join(entries[5:])
+    params['video_urls'] = '\n'.join(entries[5:])
     assert fal_common.collect_merge_video_urls(params) == entries
 
 
 def test_single_direct_slot_rejects_accidental_multiple_urls():
     with pytest.raises(fal_common.FalError, match='exactly one'):
         fal_common.collect_merge_video_urls({
-            'video_url_1':'https://v3.fal.media/1.mp4\\nhttps://v3.fal.media/2.mp4',
+            'video_url_1':'https://v3.fal.media/1.mp4\nhttps://v3.fal.media/2.mp4',
             'video_url_2':'https://v3.fal.media/3.mp4',
         })
