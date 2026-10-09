@@ -11,6 +11,24 @@ description:
     zh_Hans: 使用任务ID查询生成进度，并在完成后获取图片/视频。
   llm: Poll a previously submitted Fal task, without resubmitting or extra generation
     charges.
+output_schema:
+  type: object
+  properties:
+    video_url:
+      type: string
+      description: "Available on completed video tasks"
+    image_url:
+      type: string
+      description: "Available on completed image tasks"
+    media_url:
+      type: string
+      description: "Public output URL"
+    request_id:
+      type: string
+      description: "Fal request identifier"
+    status:
+      type: string
+      description: "Current or completed Fal task status"
 parameters:
 - name: request_id
   type: string
