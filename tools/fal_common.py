@@ -6,6 +6,7 @@ import base64
 import ipaddress
 import json
 import mimetypes
+import re
 import time
 from urllib.parse import urlsplit
 
@@ -210,26 +211,68 @@ def to_image_url(file_obj, url=''):
 
 
 def parse_video_urls(value):
-    """Accept JSON array or newline-separated URL list, preserving original order."""
-    if isinstance(value, list):
-        videos = value
-    else:
-        value = str(value or '').strip()
-        if value.startswith('['):
-            try:
-                videos = json.loads(value)
-            except json.JSONDecodeError as e:
-                raise FalError('video_urls must be a JSON array or newline-separated URLs.') from e
-        else:
-            videos = [v.strip() for v in value.replace('\r', '').split('\n') if v.strip()]
-            if len(videos) == 1 and ',' in videos[0] and '?' not in videos[0]:
-                videos = [v.strip() for v in videos[0].split(',')]
-    if not isinstance(videos, list) or len(videos) < 2:
-        raise FalError('Provide at least two video URLs as a JSON array or separate lines.')
-    if not all(isinstance(v, str) and _is_public_https_url(v.strip()) for v in videos):
-        raise FalError('Each video URL must be public HTTPS (not private/local address).')
-    return [v.strip() for v in videos]
+    """Accept URLs, JSON, copied Dify output, or newline/comma-delimited links.
 
+    Never require users to construct an array string in the workflow editor.
+    Extracting URLs from invalid copied JSON is intentional, but each extracted
+    address is still checked for public HTTPS before submission to Fal.
+    """
+    if value is None or value == '':
+        return []
+    if isinstance(value, dict):
+        for field in ('video_urls', 'video_url', 'url', 'text', 'json'):
+            if value.get(field):
+                return parse_video_urls(value[field])
+        raise FalError('No video URL found in the supplied object.')
+    if isinstance(value, (list, tuple)):
+        urls = []
+        for item in value:
+            urls.extend(parse_video_urls(item))
+        return urls
+    value = str(value).strip()
+    if not value:
+        return []
+    # Dify sometimes renders colon escapes, Markdown, or JSON as plain text.
+    value = value.replace('\\:', ':').replace('\\/', '/')
+    if value.startswith(('[', '{')):
+        try:
+            parsed = json.loads(value)
+            if parsed != value:
+                return parse_video_urls(parsed)
+        except (json.JSONDecodeError, ValueError):
+            pass  # Be forgiving of missing quotes in pasted URL arrays.
+    # Extract full HTTPS URLs from multiline strings, copied JSON, and even
+    # malformed arrays like ["https://a.mp4,"https://b.mp4"].
+    matches = re.findall(r'https?://[^\\s\\\\"\\\'<>\\[\\]{}]+', value)
+    urls = []
+    for match in matches:
+        # Commas separating adjacent URLs must not become part of the URL.
+        for part in re.split(r'[,;](?=\\s*https?://)', match):
+            part = part.strip().rstrip(',;')
+            if part:
+                urls.append(part)
+    if not urls:
+        raise FalError('No video HTTPS URL found. Choose an upstream video_url variable or paste one URL per line.')
+    if not all(_is_public_https_url(u) for u in urls):
+        raise FalError('All video URLs must be public HTTPS addresses accessible by Fal.')
+    return urls
+
+
+def collect_merge_video_urls(parameters, max_individual=8):
+    """Read individual Dify URL pickers in clip order, then optional extras."""
+    urls = []
+    for i in range(1, max_individual + 1):
+        value = parameters.get(f'video_url_{i}')
+        if value:
+            urls.extend(parse_video_urls(value))
+    if parameters.get('video_urls'):
+        urls.extend(parse_video_urls(parameters['video_urls']))
+    if len(urls) < 2:
+        raise FalError(
+            'At least two videos are required. Set Video 1 URL and Video 2 URL '
+            'from previous video_url outputs, or supply a URL list.'
+        )
+    return urls
 
 def output_messages(tool, model, task, result, include_file=True, history=None):
     """Yield structured JSON + text URL + optional Dify native file/image."""
@@ -272,6 +315,16 @@ def output_messages(tool, model, task, result, include_file=True, history=None):
                     f'Video generated successfully at {url}; '
                     f'optional Dify MP4 attachment unavailable ({type(exc).__name__}: {exc}).'
                 )
+    # Explicit tool output variables make workflow node chaining possible:
+    # text-to-video.video_url -> merge_videos.video_url_1, and so on.
+    yield tool.create_variable_message('request_id', task['request_id'])
+    yield tool.create_variable_message('status', 'COMPLETED')
+    yield tool.create_variable_message('media_url', urls[0])
+    if is_image:
+        yield tool.create_variable_message('image_url', urls[0])
+        yield tool.create_variable_message('image_urls', urls)
+    else:
+        yield tool.create_variable_message('video_url', urls[0])
 
 
 def completed_generation(tool, model, payload, wait_seconds=540, include_file=True):
