@@ -10,6 +10,26 @@ description:
       Wait until completed or fail.
     zh_Hans: 使用通义 Z-Image Turbo 低成本生成分镜图。仅在完整生成后成功。
   llm: Generate image using fal-ai/z-image/turbo, wait for completed result.
+output_schema:
+  type: object
+  properties:
+    image_url:
+      type: string
+      description: "Public HTTPS image URL for image-to-video input"
+    image_urls:
+      type: array
+      description: "Image URLs"
+      items:
+        type: string
+    media_url:
+      type: string
+      description: "Public HTTPS output URL"
+    request_id:
+      type: string
+      description: "Fal request identifier"
+    status:
+      type: string
+      description: "Final Fal task status"
 parameters:
 - name: prompt
   type: string
