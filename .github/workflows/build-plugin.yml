@@ -21,13 +21,13 @@ jobs:
           python -m pytest -q tests
       - name: Download official Dify Plugin CLI
         run: |
-          curl -fL --retry 3 -o dify-plugin \
+          curl -fL --retry 3 -o "$RUNNER_TEMP/dify-plugin" \
             https://github.com/langgenius/dify-plugin-daemon/releases/download/0.6.10/dify-plugin-linux-amd64
-          chmod +x dify-plugin
-          ./dify-plugin version
+          chmod +x "$RUNNER_TEMP/dify-plugin"
+          "$RUNNER_TEMP/dify-plugin" version
       - name: Package .difypkg
         run: |
-          ./dify-plugin plugin package . -o fal_aigc_0.2.0.difypkg
+          "$RUNNER_TEMP/dify-plugin" plugin package . -o fal_aigc_0.2.0.difypkg
           test -s fal_aigc_0.2.0.difypkg
       - name: Upload downloadable package
         uses: actions/upload-artifact@v4
