@@ -9,6 +9,21 @@ description:
     en_US: Video from first/last frames; accepts Dify uploaded images or public URLs.
     zh_Hans: 使用首帧/尾帧图片生成视频，可输入Dify图片文件或公开URL。
   llm: Create a 5s 480P video from a start/end frame using MiniMax H3 Max.
+output_schema:
+  type: object
+  properties:
+    video_url:
+      type: string
+      description: "Public HTTPS video URL to use directly in the next merge node"
+    media_url:
+      type: string
+      description: "Public HTTPS output URL"
+    request_id:
+      type: string
+      description: "Fal request identifier"
+    status:
+      type: string
+      description: "Final Fal task status"
 parameters:
 - name: prompt
   type: string
