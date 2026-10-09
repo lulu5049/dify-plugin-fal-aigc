@@ -23,6 +23,8 @@ class CheckJobTool(Tool):
                                                 'queue_position': state.get('queue_position'),
                                                 'logs': state.get('logs') or []})
                 yield self.create_text_message(f'Fal status is {status}; job not finished, request_id={task["request_id"]}')
+                yield self.create_variable_message('request_id', task['request_id'])
+                yield self.create_variable_message('status', status)
             else:
                 raise FalError(f'Fal task state {status}; request_id={task["request_id"]}; details={str(state)[:400]}')
         except Exception as exc:
