@@ -243,11 +243,11 @@ def parse_video_urls(value):
             pass  # Be forgiving of missing quotes in pasted URL arrays.
     # Extract full HTTPS URLs from multiline strings, copied JSON, and even
     # malformed arrays like ["https://a.mp4,"https://b.mp4"].
-    matches = re.findall(r'https?://[^\\s\\\\"\\\'<>\\[\\]{}]+', value)
+    matches = re.findall(r"https?://[^\s\"'<>\[\]{}]+", value)
     urls = []
     for match in matches:
         # Commas separating adjacent URLs must not become part of the URL.
-        for part in re.split(r'[,;](?=\\s*https?://)', match):
+        for part in re.split(r'[,;](?=\s*https?://)', match):
             part = part.strip().rstrip(',;')
             if part:
                 urls.append(part)
