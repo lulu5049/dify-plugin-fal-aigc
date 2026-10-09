@@ -73,7 +73,7 @@ def test_json_array_video_urls():
     assert fal_common.parse_video_urls(json.dumps(urls)) == urls
     assert fal_common.parse_video_urls('\n'.join(urls)) == urls
     assert fal_common.parse_video_urls('https://only.one/a.mp4') == ['https://only.one/a.mp4']
-    with pytest.raises(fal_common.FalError, match='At least two'):
+    with pytest.raises(fal_common.FalError, match='Video 2 URL is required'):
         fal_common.collect_merge_video_urls({'video_url_1':'https://only.one/a.mp4'})
 
 
@@ -228,15 +228,24 @@ def test_merge_malformed_escaped_paste():
     # Matches the kind of pasted string users get when quotes are missing
     # and URL scheme is escaped as https\:.
     pasted = '["https\\://' + clip[8:] + ',"https\\://' + clip[8:] + '"]'
-    assert fal_common.collect_merge_video_urls({'video_urls':pasted}) == [clip, clip]
+    assert fal_common.parse_video_urls(pasted) == [clip, clip]
+    assert fal_common.collect_merge_video_urls({
+        'video_url_1': clip, 'video_url_2': clip, 'video_urls': pasted
+    }) == [clip, clip, clip, clip]
 
 
 def test_merge_json_and_multiline_and_dify_variable_output():
     urls = ['https://v3.fal.media/a.mp4','https://v3.fal.media/b.mp4']
-    assert fal_common.collect_merge_video_urls({'video_urls':'\n'.join(urls)}) == urls
-    assert fal_common.collect_merge_video_urls({'video_urls':json.dumps(urls)}) == urls
-    assert fal_common.collect_merge_video_urls({'video_urls':[{'video_url':urls[0]},{'video_url':urls[1]}]}) == urls
-    assert fal_common.collect_merge_video_urls({'video_url_1': urls[0], 'video_urls':urls[1]}) == urls
+    assert fal_common.parse_video_urls('\n'.join(urls)) == urls
+    assert fal_common.parse_video_urls(json.dumps(urls)) == urls
+    assert fal_common.parse_video_urls([{'video_url':urls[0]},{'video_url':urls[1]}]) == urls
+    assert fal_common.collect_merge_video_urls({
+        'video_url_1': urls[0], 'video_url_2': urls[1]
+    }) == urls
+    assert fal_common.collect_merge_video_urls({
+        'video_url_1': urls[0], 'video_url_2': urls[1],
+        'video_urls': '\n'.join(urls)
+    }) == urls + urls
 
 
 def test_image_has_direct_image_url_variable():
@@ -264,5 +273,36 @@ def test_output_schema_declares_all_direct_variables():
         assert 'show_on' not in str(config)
     merge=yaml.safe_load((root/'tools/merge_videos.yaml').read_text())
     p={x['name']:x for x in merge['parameters']}
-    assert all(f'video_url_{i}' in p for i in range(1,9))
+    assert all(f'video_url_{i}' in p for i in range(1,6))
+    assert not any(f'video_url_{i}' in p for i in range(6,9))
+    assert p['video_url_1']['required'] is True
+    assert p['video_url_2']['required'] is True
+    assert all(p[f'video_url_{i}']['required'] is False for i in (3,4,5))
     assert p['video_urls']['required'] is False
+
+
+def test_merge_requires_both_first_two_urls_even_with_extras():
+    url = 'https://v3.fal.media/video.mp4'
+    with pytest.raises(fal_common.FalError, match='Video 1 URL is required'):
+        fal_common.collect_merge_video_urls({
+            'video_url_2': url, 'video_urls': url + '\\n' + url
+        })
+    with pytest.raises(fal_common.FalError, match='Video 2 URL is required'):
+        fal_common.collect_merge_video_urls({
+            'video_url_1': url, 'video_urls': url + '\\n' + url
+        })
+
+
+def test_merge_five_fields_followed_by_unlimited_extra_urls():
+    entries = [f'https://v3.fal.media/clip{n}.mp4' for n in range(1, 10)]
+    params = {f'video_url_{n}':entries[n - 1] for n in range(1, 6)}
+    params['video_urls'] = '\\n'.join(entries[5:])
+    assert fal_common.collect_merge_video_urls(params) == entries
+
+
+def test_single_direct_slot_rejects_accidental_multiple_urls():
+    with pytest.raises(fal_common.FalError, match='exactly one'):
+        fal_common.collect_merge_video_urls({
+            'video_url_1':'https://v3.fal.media/1.mp4\\nhttps://v3.fal.media/2.mp4',
+            'video_url_2':'https://v3.fal.media/3.mp4',
+        })

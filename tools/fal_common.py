@@ -258,20 +258,31 @@ def parse_video_urls(value):
     return urls
 
 
-def collect_merge_video_urls(parameters, max_individual=8):
-    """Read individual Dify URL pickers in clip order, then optional extras."""
+def collect_merge_video_urls(parameters):
+    """Merge two required upstream video URLs, three optional URLs and extras.
+
+    Each direct Dify field accepts exactly one URL; the optional list can have
+    any number of additional URLs and is appended after the first five slots.
+    """
     urls = []
-    for i in range(1, max_individual + 1):
+    for i in range(1, 6):
         value = parameters.get(f'video_url_{i}')
-        if value:
-            urls.extend(parse_video_urls(value))
+        if i <= 2 and not value:
+            raise FalError(
+                f'Video {i} URL is required. Select the upstream video_url '
+                f'output from a previous video generation node.'
+            )
+        if not value:
+            continue
+        parsed = parse_video_urls(value)
+        if len(parsed) != 1:
+            raise FalError(
+                f'Video {i} URL must contain exactly one HTTPS video URL. '
+                f'Use More Video URLs for additional clips.'
+            )
+        urls.append(parsed[0])
     if parameters.get('video_urls'):
         urls.extend(parse_video_urls(parameters['video_urls']))
-    if len(urls) < 2:
-        raise FalError(
-            'At least two videos are required. Set Video 1 URL and Video 2 URL '
-            'from previous video_url outputs, or supply a URL list.'
-        )
     return urls
 
 def output_messages(tool, model, task, result, include_file=True, history=None):

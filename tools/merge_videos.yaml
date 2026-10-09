@@ -6,8 +6,8 @@ identity:
     zh_Hans: FFmpeg - 多视频拼接
 description:
   human:
-    en_US: Join a variable number of video URLs in order; no fixed count of inputs.
-    zh_Hans: 按顺序拼接多个视频，输入数量不固定。
+    en_US: Join at least two videos using five direct URL inputs and optional extra URLs.
+    zh_Hans: 按顺序拼接视频：前两段URL必填，第3–5段可选，超出5段用更多视频URL。
   llm: Join 2+ video URLs from separately selected variables or a text list using Fal FFmpeg.
 output_schema:
   type: object
@@ -27,24 +27,24 @@ output_schema:
 parameters:
 - name: video_url_1
   type: string
-  required: false
+  required: true
   label:
-    en_US: "Video 1 URL (recommended)"
-    zh_Hans: "第1段视频URL（优先填写）"
+    en_US: "Video 1 URL (required)"
+    zh_Hans: "第1段视频URL（必填）"
   human_description:
-    en_US: Select the previous video tool's video_url output. Leave blank to skip.
-    zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
+    en_US: Required. Select a preceding video tool's video_url output.
+    zh_Hans: 必填。从前面的视频节点直接选择video_url输出变量。
   llm_description: Public HTTPS video URL of clip 1; bind from previous node's video_url.
   form: llm
 - name: video_url_2
   type: string
-  required: false
+  required: true
   label:
-    en_US: "Video 2 URL (recommended)"
-    zh_Hans: "第2段视频URL（优先填写）"
+    en_US: "Video 2 URL (required)"
+    zh_Hans: "第2段视频URL（必填）"
   human_description:
-    en_US: Select the previous video tool's video_url output. Leave blank to skip.
-    zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
+    en_US: Required. Select a preceding video tool's video_url output.
+    zh_Hans: 必填。从前面的视频节点直接选择video_url输出变量。
   llm_description: Public HTTPS video URL of clip 2; bind from previous node's video_url.
   form: llm
 - name: video_url_3
@@ -80,48 +80,15 @@ parameters:
     zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
   llm_description: Public HTTPS video URL of clip 5; bind from previous node's video_url.
   form: llm
-- name: video_url_6
-  type: string
-  required: false
-  label:
-    en_US: "Video 6 URL"
-    zh_Hans: "第6段视频URL"
-  human_description:
-    en_US: Select the previous video tool's video_url output. Leave blank to skip.
-    zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
-  llm_description: Public HTTPS video URL of clip 6; bind from previous node's video_url.
-  form: llm
-- name: video_url_7
-  type: string
-  required: false
-  label:
-    en_US: "Video 7 URL"
-    zh_Hans: "第7段视频URL"
-  human_description:
-    en_US: Select the previous video tool's video_url output. Leave blank to skip.
-    zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
-  llm_description: Public HTTPS video URL of clip 7; bind from previous node's video_url.
-  form: llm
-- name: video_url_8
-  type: string
-  required: false
-  label:
-    en_US: "Video 8 URL"
-    zh_Hans: "第8段视频URL"
-  human_description:
-    en_US: Select the previous video tool's video_url output. Leave blank to skip.
-    zh_Hans: 直接引用前一个视频节点的video_url输出变量；留空则跳过。
-  llm_description: Public HTTPS video URL of clip 8; bind from previous node's video_url.
-  form: llm
 - name: video_urls
   type: string
   required: false
   label:
-    en_US: More Video URLs (optional, one per line)
-    zh_Hans: 更多视频URL（可选，每行一条）
+    en_US: More Video URLs (only for clips 6+, one per line)
+    zh_Hans: 更多视频URL（第6段起，可选）
   human_description:
-    en_US: Paste extra URLs as plain lines (also accepts JSON or copied Dify results). Appended after Video 1–8.
-    zh_Hans: 直接粘贴每行一个URL（也接受JSON和Dify输出）；追加在前8段之后。
+    en_US: Paste extra URLs as plain lines (also accepts JSON or copied Dify results). Appended after Video 1–5.
+    zh_Hans: 直接粘贴每行一个URL（也接受JSON和Dify输出）；追加在前5段之后。
   llm_description: Optional extra videos, one URL per line; no need to construct JSON.
   form: llm
 - name: target_fps
