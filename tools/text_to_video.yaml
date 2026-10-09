@@ -1,0 +1,146 @@
+identity:
+  name: text_to_video
+  author: lulu5049
+  label:
+    en_US: MiniMax H3 Max - Text to Video
+    zh_Hans: MiniMax H3 Max - 文生视频
+description:
+  human:
+    en_US: Generate video from a prompt; defaults to 5s, 480P, no prompt expansion.
+    zh_Hans: 输入提示词生成视频，默认5秒、480P、关闭扩写。
+  llm: Generate a video using minimax/h3-max/text-to-video.
+parameters:
+- name: prompt
+  type: string
+  required: true
+  label:
+    en_US: Prompt
+    zh_Hans: 视频提示词
+  human_description:
+    en_US: Describe action, camera and scene.
+    zh_Hans: 描述动作、镜头与场景。
+  llm_description: Video prompt.
+  form: llm
+- name: duration
+  type: number
+  required: false
+  default: 5
+  min: 2
+  max: 15
+  label:
+    en_US: Seconds
+    zh_Hans: 时长（秒）
+  human_description:
+    en_US: 5 seconds is the cost-aware default.
+    zh_Hans: 默认5秒以降低成本。
+  llm_description: Video length.
+  form: form
+- name: resolution
+  type: select
+  required: false
+  default: 480P
+  label:
+    en_US: Resolution
+    zh_Hans: 分辨率
+  human_description:
+    en_US: 480P is cheapest.
+    zh_Hans: 480P成本最低。
+  llm_description: Native video resolution.
+  form: form
+  options:
+  - value: 480P
+    label:
+      en_US: 480P (cheapest)
+      zh_Hans: 480P（最低成本）
+  - value: 768P
+    label:
+      en_US: 768P
+      zh_Hans: 768P
+  - value: 1080P
+    label:
+      en_US: 1080P
+      zh_Hans: 1080P
+- name: aspect_ratio
+  type: select
+  required: false
+  default: '16:9'
+  label:
+    en_US: Aspect Ratio
+    zh_Hans: 画面比例
+  human_description:
+    en_US: Output aspect ratio.
+    zh_Hans: 输出画面比例。
+  llm_description: Aspect ratio.
+  form: form
+  options:
+  - value: '16:9'
+    label:
+      en_US: "16:9"
+      zh_Hans: "16:9"
+  - value: '9:16'
+    label:
+      en_US: "9:16"
+      zh_Hans: "9:16"
+  - value: '1:1'
+    label:
+      en_US: "1:1"
+      zh_Hans: "1:1"
+  - value: '4:3'
+    label:
+      en_US: "4:3"
+      zh_Hans: "4:3"
+- name: prompt_expansion_mode
+  type: select
+  required: false
+  default: disabled
+  label:
+    en_US: Prompt Expansion
+    zh_Hans: 提示词扩写
+  human_description:
+    en_US: Disabled avoids extra preprocessing time.
+    zh_Hans: 默认关闭，以节省预处理时间。
+  llm_description: Expansion setting.
+  form: form
+  options:
+  - value: disabled
+    label:
+      en_US: Disabled
+      zh_Hans: 关闭
+  - value: balanced
+    label:
+      en_US: Balanced
+      zh_Hans: 均衡
+  - value: quality
+    label:
+      en_US: Quality
+      zh_Hans: 高质量
+- name: wait_seconds
+  type: number
+  required: false
+  default: 540
+  min: 1
+  max: 840
+  label:
+    en_US: Maximum Wait (seconds)
+    zh_Hans: 最大等待时间（秒）
+  human_description:
+    en_US: The node waits for final result. Timeout causes a node error containing
+      the Fal request ID.
+    zh_Hans: 一直等待最终结果；超时将让节点报错，并保留Fal任务ID。
+  llm_description: Max polling wait.
+  form: form
+- name: return_file
+  type: boolean
+  required: false
+  default: true
+  label:
+    en_US: Return MP4 File
+    zh_Hans: 返回MP4视频文件
+  human_description:
+    en_US: Downloads completed video into Dify File output, up to 55 MB.
+    zh_Hans: 把完成的视频下载并输出为Dify文件（最多55MB）。
+  llm_description: Emit Dify MP4 file.
+  form: form
+extra:
+  python:
+    source: tools/text_to_video.py

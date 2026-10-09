@@ -1,0 +1,65 @@
+identity:
+  name: merge_videos
+  author: lulu5049
+  label:
+    en_US: FFmpeg - Merge Videos
+    zh_Hans: FFmpeg - 多视频拼接
+description:
+  human:
+    en_US: Join a variable number of video URLs in order; no fixed count of inputs.
+    zh_Hans: 按顺序拼接多个视频，输入数量不固定。
+  llm: Merge a JSON array of two or more public HTTPS video URLs using Fal FFmpeg
+    API.
+parameters:
+- name: video_urls
+  type: string
+  required: true
+  label:
+    en_US: Video URLs (JSON array or one per line)
+    zh_Hans: 视频URL列表（JSON数组或每行一个）
+  human_description:
+    en_US: 'Example: ["https://...1.mp4", "https://...2.mp4"]. Original order preserved.'
+    zh_Hans: 例如：["https://...1.mp4", "https://...2.mp4"]；按输入顺序拼接。
+  llm_description: JSON-encoded array of video URLs, minimum two.
+  form: llm
+- name: target_fps
+  type: number
+  required: false
+  label:
+    en_US: Target FPS (optional)
+    zh_Hans: 目标帧率（可选）
+  human_description:
+    en_US: Leave blank to use lowest input FPS.
+    zh_Hans: 留空则使用输入视频中的最低帧率。
+  llm_description: Target frames per second.
+  form: form
+- name: wait_seconds
+  type: number
+  required: false
+  default: 540
+  min: 1
+  max: 840
+  label:
+    en_US: Maximum Wait (seconds)
+    zh_Hans: 最大等待时间（秒）
+  human_description:
+    en_US: The node waits for final result. Timeout causes a node error containing
+      the Fal request ID.
+    zh_Hans: 一直等待最终结果；超时将让节点报错，并保留Fal任务ID。
+  llm_description: Max polling wait.
+  form: form
+- name: return_file
+  type: boolean
+  required: false
+  default: true
+  label:
+    en_US: Return MP4 File
+    zh_Hans: 返回MP4文件
+  human_description:
+    en_US: Also download the finished MP4 as a Dify file (up to 55 MB).
+    zh_Hans: 同时将合成后的MP4返回为Dify文件（最大55MB）。
+  llm_description: Emit MP4 file.
+  form: form
+extra:
+  python:
+    source: tools/merge_videos.py

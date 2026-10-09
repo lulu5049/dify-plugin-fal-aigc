@@ -1,0 +1,161 @@
+identity:
+  name: image_to_video
+  author: lulu5049
+  label:
+    en_US: MiniMax H3 Max - Image to Video
+    zh_Hans: MiniMax H3 Max - 图生视频
+description:
+  human:
+    en_US: Video from first/last frames; accepts Dify uploaded images or public URLs.
+    zh_Hans: 使用首帧/尾帧图片生成视频，可输入Dify图片文件或公开URL。
+  llm: Create a 5s 480P video from a start/end frame using MiniMax H3 Max.
+parameters:
+- name: prompt
+  type: string
+  required: true
+  label:
+    en_US: Prompt
+    zh_Hans: 视频运动提示词
+  human_description:
+    en_US: Describe motion and camera work.
+    zh_Hans: 描述画面运动和镜头变化。
+  llm_description: Motion prompt.
+  form: llm
+- name: image_input
+  type: file
+  required: false
+  label:
+    en_US: Start Image File
+    zh_Hans: 首帧图片文件
+  human_description:
+    en_US: Preferred for Dify-uploaded images; translated into a data URI.
+    zh_Hans: Dify上传图片建议用此参数；插件将转换为Base64。
+  llm_description: Optional first-frame image file.
+  form: llm
+- name: image_url
+  type: string
+  required: false
+  label:
+    en_US: Start Image URL
+    zh_Hans: 首帧图片URL
+  human_description:
+    en_US: Public HTTPS URL, alternative to Start Image File.
+    zh_Hans: 公开HTTPS链接，和图片文件二选一。
+  llm_description: Optional first-frame HTTPS URL.
+  form: llm
+- name: end_image_input
+  type: file
+  required: false
+  label:
+    en_US: End Image File
+    zh_Hans: 尾帧图片文件
+  human_description:
+    en_US: Optional last frame upload.
+    zh_Hans: 可选尾帧图片。
+  llm_description: Optional end-frame file.
+  form: llm
+- name: end_image_url
+  type: string
+  required: false
+  label:
+    en_US: End Image URL
+    zh_Hans: 尾帧图片URL
+  human_description:
+    en_US: Optional public HTTPS last-frame URL.
+    zh_Hans: 可选公开尾帧链接。
+  llm_description: Optional last-frame URL.
+  form: llm
+- name: duration
+  type: number
+  required: false
+  default: 5
+  min: 2
+  max: 15
+  label:
+    en_US: Seconds
+    zh_Hans: 时长（秒）
+  human_description:
+    en_US: Default 5 seconds.
+    zh_Hans: 默认5秒。
+  llm_description: Video duration.
+  form: form
+- name: resolution
+  type: select
+  required: false
+  default: 480P
+  label:
+    en_US: Resolution
+    zh_Hans: 分辨率
+  human_description:
+    en_US: Default cheapest 480P.
+    zh_Hans: 默认最低成本480P。
+  llm_description: Video resolution.
+  form: form
+  options:
+  - value: 480P
+    label:
+      en_US: 480P
+      zh_Hans: 480P
+  - value: 768P
+    label:
+      en_US: 768P
+      zh_Hans: 768P
+  - value: 1080P
+    label:
+      en_US: 1080P
+      zh_Hans: 1080P
+- name: prompt_expansion_mode
+  type: select
+  required: false
+  default: disabled
+  label:
+    en_US: Prompt Expansion
+    zh_Hans: 提示词扩写
+  human_description:
+    en_US: Disabled is fastest.
+    zh_Hans: 默认关闭，速度最快。
+  llm_description: Prompt expansion.
+  form: form
+  options:
+  - value: disabled
+    label:
+      en_US: Disabled
+      zh_Hans: 关闭
+  - value: balanced
+    label:
+      en_US: Balanced
+      zh_Hans: 均衡
+  - value: quality
+    label:
+      en_US: Quality
+      zh_Hans: 高质量
+- name: wait_seconds
+  type: number
+  required: false
+  default: 540
+  min: 1
+  max: 840
+  label:
+    en_US: Maximum Wait (seconds)
+    zh_Hans: 最大等待时间（秒）
+  human_description:
+    en_US: The node waits for final result. Timeout causes a node error containing
+      the Fal request ID.
+    zh_Hans: 一直等待最终结果；超时将让节点报错，并保留Fal任务ID。
+  llm_description: Max polling wait.
+  form: form
+- name: return_file
+  type: boolean
+  required: false
+  default: true
+  label:
+    en_US: Return MP4 File
+    zh_Hans: 返回MP4文件
+  human_description:
+    en_US: Output an MP4 as a Dify file, size capped at 55 MB.
+    zh_Hans: 输出可被后续节点引用的Dify文件，大小上限55MB。
+  llm_description: Emit MP4 file.
+  form: form
+extra:
+  python:
+    source: tools/image_to_video.py

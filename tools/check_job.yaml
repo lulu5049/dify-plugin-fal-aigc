@@ -1,0 +1,68 @@
+identity:
+  name: check_job
+  author: lulu5049
+  label:
+    en_US: Check Fal Job / Fetch Result
+    zh_Hans: 查询Fal任务 / 获取结果
+description:
+  human:
+    en_US: Check a previously submitted task by its request ID and return media when
+      complete.
+    zh_Hans: 使用任务ID查询生成进度，并在完成后获取图片/视频。
+  llm: Poll a previously submitted Fal task, without resubmitting or extra generation
+    charges.
+parameters:
+- name: request_id
+  type: string
+  required: true
+  label:
+    en_US: Request ID
+    zh_Hans: 任务ID
+  human_description:
+    en_US: From the original generation tool's JSON output.
+    zh_Hans: 从生成节点输出JSON中提取。
+  llm_description: Fal queue request_id.
+  form: llm
+- name: model
+  type: select
+  required: true
+  label:
+    en_US: Original Model
+    zh_Hans: 原任务模型
+  human_description:
+    en_US: Select the exact model used when submitting.
+    zh_Hans: 选择原本提交时所用的模型。
+  llm_description: Original model endpoint.
+  form: form
+  options:
+  - value: minimax/h3-max/text-to-video
+    label:
+      en_US: MiniMax H3 Max Text to Video
+      zh_Hans: H3 Max 文生视频
+  - value: minimax/h3-max/image-to-video
+    label:
+      en_US: MiniMax H3 Max Image to Video
+      zh_Hans: H3 Max 图生视频
+  - value: fal-ai/ffmpeg-api/merge-videos
+    label:
+      en_US: FFmpeg Merge Videos
+      zh_Hans: FFmpeg 视频拼接
+  - value: fal-ai/z-image/turbo
+    label:
+      en_US: Z-Image Turbo
+      zh_Hans: Z-Image Turbo
+- name: return_file
+  type: boolean
+  required: false
+  default: true
+  label:
+    en_US: Return Media File
+    zh_Hans: 返回媒体文件
+  human_description:
+    en_US: Emit Dify media output when ready.
+    zh_Hans: 完成后同时输出Dify媒体文件。
+  llm_description: Emit native media.
+  form: form
+extra:
+  python:
+    source: tools/check_job.py

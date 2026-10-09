@@ -1,0 +1,97 @@
+identity:
+  name: generate_image
+  author: lulu5049
+  label:
+    en_US: Z-Image Turbo - Generate Image
+    zh_Hans: Z-Image Turbo - 文生图
+description:
+  human:
+    en_US: Generate affordable storyboard images using Alibaba Tongyi Z-Image Turbo.
+      Wait until completed or fail.
+    zh_Hans: 使用通义 Z-Image Turbo 低成本生成分镜图。仅在完整生成后成功。
+  llm: Generate image using fal-ai/z-image/turbo, wait for completed result.
+parameters:
+- name: prompt
+  type: string
+  required: true
+  label:
+    en_US: Prompt
+    zh_Hans: 图片提示词
+  human_description:
+    en_US: Describe the image.
+    zh_Hans: 描述要生成的画面。
+  llm_description: Image generation prompt.
+  form: llm
+- name: image_size
+  type: select
+  required: false
+  default: landscape_16_9
+  label:
+    en_US: Aspect / Size
+    zh_Hans: 图片尺寸
+  human_description:
+    en_US: Landscape 16:9 is a useful storyboard default.
+    zh_Hans: 默认横屏16:9，适合做视频分镜。
+  llm_description: Output image size.
+  form: form
+  options:
+  - value: landscape_16_9
+    label:
+      en_US: Landscape 16:9
+      zh_Hans: 横屏16:9
+  - value: portrait_16_9
+    label:
+      en_US: Portrait 9:16
+      zh_Hans: 竖屏9:16
+  - value: square
+    label:
+      en_US: Square (small)
+      zh_Hans: 正方形（小）
+  - value: landscape_4_3
+    label:
+      en_US: Landscape 4:3
+      zh_Hans: 横屏4:3
+  - value: square_hd
+    label:
+      en_US: Square HD
+      zh_Hans: 高清正方形
+- name: seed
+  type: number
+  required: false
+  label:
+    en_US: Seed
+    zh_Hans: 随机种子
+  human_description:
+    en_US: Optional repeatability.
+    zh_Hans: 可选，用于复现。
+  llm_description: Optional seed.
+  form: form
+- name: wait_seconds
+  type: number
+  required: false
+  default: 540
+  min: 1
+  max: 840
+  label:
+    en_US: Maximum Wait (seconds)
+    zh_Hans: 最大等待时间（秒）
+  human_description:
+    en_US: Node FAILS on timeout; request ID appears in the error. No partial success.
+    zh_Hans: 超时节点会报错，错误中保留任务ID，不会误报成功。
+  llm_description: Maximum seconds to poll Fal queue.
+  form: form
+- name: return_file
+  type: boolean
+  required: false
+  default: true
+  label:
+    en_US: Return Image Preview
+    zh_Hans: 返回图片预览
+  human_description:
+    en_US: Emit an image message in addition to URL/JSON.
+    zh_Hans: 除URL和JSON外输出Dify图片。
+  llm_description: Include image message.
+  form: form
+extra:
+  python:
+    source: tools/generate_image.py

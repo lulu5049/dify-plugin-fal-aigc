@@ -1,0 +1,36 @@
+identity:
+  author: lulu5049
+  name: fal_aigc
+  label:
+    en_US: Fal AI Video & Images
+    zh_Hans: Fal AI 图片视频生成
+  description:
+    en_US: Fal image and video generation + video merger
+    zh_Hans: Fal 图片视频生成与多视频拼接
+  icon: icon.svg
+  tags:
+    - image
+    - videos
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Fal API Key
+      zh_Hans: Fal API 密钥
+    placeholder:
+      en_US: Enter your Fal API Key
+      zh_Hans: 请输入 Fal API Key
+    help:
+      en_US: The key is stored as a secret. Saving it does not invoke a paid model.
+      zh_Hans: 密钥安全存储；保存时不会触发付费生成。
+    url: https://fal.ai/dashboard/keys
+tools:
+  - tools/generate_image.yaml
+  - tools/text_to_video.yaml
+  - tools/image_to_video.yaml
+  - tools/merge_videos.yaml
+  - tools/check_job.yaml
+extra:
+  python:
+    source: provider/fal_aigc.py

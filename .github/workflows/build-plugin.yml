@@ -1,0 +1,37 @@
+name: Build Dify Plugin
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate Python syntax and manifests
+        run: |
+          python -m compileall -q main.py provider tools
+          python -m pip install -q pytest pyyaml requests
+          python -m pytest -q tests
+      - name: Download official Dify Plugin CLI
+        run: |
+          curl -fL --retry 3 -o dify-plugin \
+            https://github.com/langgenius/dify-plugin-daemon/releases/download/0.6.10/dify-plugin-linux-amd64
+          chmod +x dify-plugin
+          ./dify-plugin version
+      - name: Package .difypkg
+        run: |
+          ./dify-plugin plugin package . -o fal_aigc_0.2.0.difypkg
+          test -s fal_aigc_0.2.0.difypkg
+      - name: Upload downloadable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: fal_aigc_0.2.0-difypkg
+          path: fal_aigc_0.2.0.difypkg
+          if-no-files-found: error

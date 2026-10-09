@@ -1,0 +1,53 @@
+version: 0.2.0
+type: plugin
+author: lulu5049
+name: fal_aigc
+label:
+  en_US: Fal AI Video & Images
+  zh_Hans: Fal AI 图片视频生成
+description:
+  en_US: Z-Image Turbo, MiniMax H3 Max text/image-to-video, and FFmpeg merging with
+    final-result blocking and queue status reporting.
+  zh_Hans: Z-Image Turbo、MiniMax H3 Max文/图生视频与FFmpeg拼接。等待完整结果并反馈队列状态。
+icon: icon.svg
+tags:
+- image
+- videos
+- productivity
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: false
+      llm: false
+      text_embedding: false
+      rerank: false
+      tts: false
+      speech2text: false
+      moderation: false
+    endpoint:
+      enabled: false
+    app:
+      enabled: false
+    storage:
+      enabled: false
+      size: 0
+plugins:
+  tools:
+  - provider/fal_aigc.yaml
+meta:
+  version: 0.2.0
+  arch:
+  - amd64
+  - arm64
+  runner:
+    language: python
+    version: '3.12'
+    entrypoint: main
+  minimum_dify_version: null
+created_at: '2026-10-09T00:00:00Z'
+privacy: PRIVACY.md
+repo: https://github.com/lulu5049/dify-plugin-fal-aigc
+verified: false
