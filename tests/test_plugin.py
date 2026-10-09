@@ -93,16 +93,19 @@ def test_video_emits_mp4_blob(monkeypatch):
     monkeypatch.setattr(fal_common, 'media_bytes', lambda url: b'FAKE_MP4')
     tool = sys.modules['dify_plugin'].Tool()
     task = {'request_id': 'job-1'}
-    msgs = list(fal_common.output_messages(tool, fal_common.MODELS['t2v'], task,
-                     {'video': {'url': 'https://v3.fal.media/files/demo.mp4'}}, True))
-    assert msgs[0][1]['video_url'].endswith('demo.mp4')
-    assert msgs[2][0] == 'blob'
-    assert msgs[2][1] == b'FAKE_MP4'
-    assert msgs[2][2]['mime_type'] == 'video/mp4'
-    assert msgs[2][2]['filename'] == 'fal_video.mp4'
-    assert ('variable', 'video_url', 'https://v3.fal.media/files/demo.mp4') in msgs
-    assert ('variable', 'status', 'COMPLETED') in msgs
-    assert ('variable', 'media_url', 'https://v3.fal.media/files/demo.mp4') in msgs
+    msgs = list(fal_common.output_messages(
+        tool, fal_common.MODELS['t2v'], task,
+        {'video': {'url': 'https://v3.fal.media/files/demo.mp4'}}, True))
+    assert [m[0] for m in msgs] == ['json', 'blob', 'variable']
+    assert msgs[0][1] == {
+        'request_id': 'job-1', 'model': fal_common.MODELS['t2v'],
+        'status': 'COMPLETED',
+        'video_url': 'https://v3.fal.media/files/demo.mp4'
+    }
+    assert msgs[1][1] == b'FAKE_MP4'
+    assert msgs[1][2]['mime_type'] == 'video/mp4'
+    assert msgs[1][2]['filename'] == 'fal_video.mp4'
+    assert msgs[2] == ('variable', 'video_url', 'https://v3.fal.media/files/demo.mp4')
 
 
 def test_model_specific_payloads(monkeypatch):
@@ -199,7 +202,7 @@ def test_yaml_and_resources():
     assert (ROOT / '_assets/icon.svg').is_file()
 
 def test_optional_mp4_attachment_error_preserves_completed_result(monkeypatch):
-    """A paid, completed Fal job cannot fail because Dify rejects the optional blob."""
+    """A completed Fal job remains successful if optional Dify file delivery fails."""
     monkeypatch.setattr(fal_common, 'media_bytes', lambda url: b'FAKE_MP4')
     class ToolWithoutBlob(sys.modules['dify_plugin'].Tool):
         def create_blob_message(self, blob, meta=None):
@@ -208,11 +211,12 @@ def test_optional_mp4_attachment_error_preserves_completed_result(monkeypatch):
         ToolWithoutBlob(), fal_common.MODELS['t2v'],
         {'request_id': 'done-job'},
         {'video': {'url': 'https://v3.fal.media/files/done.mp4'}}, True))
-    assert msgs[0][0] == 'json'
+    assert [m[0] for m in msgs] == ['json', 'text', 'variable']
     assert msgs[0][1]['status'] == 'COMPLETED'
     assert msgs[0][1]['video_url'].endswith('done.mp4')
-    assert msgs[1] == ('text', 'https://v3.fal.media/files/done.mp4')
-    assert 'attachment unavailable' in msgs[2][1]
+    assert 'attachment unavailable' in msgs[1][1]
+    assert msgs[2] == ('variable', 'video_url',
+                       'https://v3.fal.media/files/done.mp4')
 
 
 def test_merge_from_individual_node_output_variables():
@@ -254,22 +258,48 @@ def test_image_has_direct_image_url_variable():
     msgs = list(fal_common.output_messages(
         tool, fal_common.MODELS['zimage'], {'request_id':'img-1'},
         {'images':[{'url':'https://v3.fal.media/picture.jpg'}]}, True))
-    assert ('variable', 'image_url', 'https://v3.fal.media/picture.jpg') in msgs
-    assert ('variable', 'media_url', 'https://v3.fal.media/picture.jpg') in msgs
-    assert ('variable', 'image_urls', ['https://v3.fal.media/picture.jpg']) in msgs
-    assert ('variable', 'request_id', 'img-1') in msgs
+    assert [m[0] for m in msgs] == ['json', 'image', 'variable']
+    assert msgs[0][1] == {
+        'request_id': 'img-1', 'model': fal_common.MODELS['zimage'],
+        'status': 'COMPLETED',
+        'image_url': 'https://v3.fal.media/picture.jpg'
+    }
+    assert msgs[2] == ('variable', 'image_url', 'https://v3.fal.media/picture.jpg')
 
 
-def test_output_schema_declares_all_direct_variables():
+def test_check_job_has_one_generic_url_output_on_completion():
+    tool = sys.modules['dify_plugin'].Tool()
+    msgs = list(fal_common.output_messages(
+        tool, fal_common.MODELS['t2v'], {'request_id':'job-done'},
+        {'video': {'url':'https://v3.fal.media/video.mp4'}},
+        include_file=False, url_variable='url'))
+    assert [m[0] for m in msgs] == ['json', 'variable']
+    assert msgs[1] == ('variable','url','https://v3.fal.media/video.mp4')
+
+
+def test_normal_success_has_no_redundant_text_even_when_no_file():
+    tool = sys.modules['dify_plugin'].Tool()
+    msgs = list(fal_common.output_messages(
+        tool, fal_common.MODELS['t2v'], {'request_id':'job-done'},
+        {'video': {'url':'https://v3.fal.media/video.mp4'}},
+        include_file=False))
+    assert [m[0] for m in msgs] == ['json', 'variable']
+
+
+def test_output_schema_declares_one_url_variable_per_tool():
     from pathlib import Path
     import yaml
-    root=Path(__file__).resolve().parents[1]
-    for tool in ['text_to_video','image_to_video','generate_image','merge_videos','check_job']:
+    root = Path(__file__).resolve().parents[1]
+    tool_urls = {
+        'text_to_video':'video_url', 'image_to_video':'video_url',
+        'generate_image':'image_url', 'merge_videos':'video_url',
+        'check_job':'url'
+    }
+    for tool, expected_url in tool_urls.items():
         config=yaml.safe_load((root/'tools'/f'{tool}.yaml').read_text())
         props=config['output_schema']['properties']
-        assert props['media_url']['type']=='string'
-        assert props['request_id']['type']=='string'
-        assert ('image_url' if tool=='generate_image' else 'video_url') in props
+        assert list(props) == [expected_url]
+        assert props[expected_url]['type'] == 'string'
         assert 'select_on' not in str(config)
         assert 'show_on' not in str(config)
     merge=yaml.safe_load((root/'tools/merge_videos.yaml').read_text())

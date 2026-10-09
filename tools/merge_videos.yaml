@@ -14,16 +14,7 @@ output_schema:
   properties:
     video_url:
       type: string
-      description: "Public HTTPS video URL to use directly in the next merge node"
-    media_url:
-      type: string
-      description: "Public HTTPS output URL"
-    request_id:
-      type: string
-      description: "Fal request identifier"
-    status:
-      type: string
-      description: "Final Fal task status"
+      description: "Video HTTPS URL for the next Merge Videos node"
 parameters:
 - name: video_url_1
   type: string

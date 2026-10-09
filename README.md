@@ -1,4 +1,4 @@
-# Fal AIGC for Dify (v0.3.1)
+# Fal AIGC for Dify (v0.3.2)
 
 中文优先 · A Dify Tool plugin for [fal.ai](https://fal.ai).
 
@@ -16,7 +16,7 @@ Image/video/merge nodes: submit to Fal queue, poll until COMPLETED and fetch the
 
 ## Setup
 
-1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.3.1.difypkg`.
+1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.3.2.difypkg`.
 2. Dify → Plugins → Install Plugin → Local File; configure Fal API Key.
 3. Add the tool node. It returns URL, JSON metadata, and an image preview or MP4 Dify File (up to 55MB) when `return_file=true`.
 4. Connect `image_url` to H3 Max `image_url`, or add video URLs in a JSON array to FFmpeg merge.
@@ -51,21 +51,21 @@ Create public repo `lulu5049/dify-plugin-fal-aigc` (or change `repo` in manifest
 
 Based on the TongYi AIGC branch merged by PR #3, which removed unsupported dynamic `show_on` conditions. This Fal plugin contains no such conditions.
 
-## v0.3.1: Dify Cloud MP4 output fix
+## v0.3.2: Dify Cloud MP4 output fix
 
 - Removed the unsupported `save_as` keyword from Dify SDK `create_blob_message` (the v0.9–v0.10 signature accepts only `blob` and `meta`).
 - MP4 messages use the `video/mp4` MIME type and optional filename metadata.
 - If the optional Dify attachment fails, the already-completed paid generation still succeeds with its Fal video URL and an explicit warning; it does not submit another generation task.
 - CI tests the output path using the actual installed Dify SDK, preventing fake SDK mocks from masking signature differences.
 
-## v0.3.1: Marketplace-style unconstrained SDK upper bound
+## v0.3.2: Marketplace-style unconstrained SDK upper bound
 
 - Match the original Dify Marketplace Tongyi AIGC requirements: `dify_plugin>=0.9.0` and `requests>=2.31.0,<3.0.0`.
 - No artificial SDK upper limit. The plugin uses only public Dify Tool message factories and ToolProvider/DifyPluginEnv APIs.
 - IMPORTANT: An unbounded SDK requirement does not guarantee Dify Cloud reuses a Marketplace plugin environment or avoids downloading packages. Installing a manually uploaded plugin may have different scheduling/caching behavior than installing a verified Marketplace plugin.
 - This release retains the MP4 BLOB fix and requires real-SDK output and import tests to pass in CI.
 
-## v0.3.1: Workflow-first node chaining
+## v0.3.2: Workflow-first node chaining
 
 - All media-producing tools expose dedicated `video_url` or `image_url` output variables using `output_schema` plus real SDK `create_variable_message()`. They also expose a common `media_url`, `request_id`, and `status`.
 - FFmpeg Merge Videos has Video 1–5 URL input fields for choosing existing upstream `video_url` variables directly. Video 1 URL and Video 2 URL are both required. Videos 3–5 are optional; original order is preserved.
@@ -75,8 +75,16 @@ Based on the TongYi AIGC branch merged by PR #3, which removed unsupported dynam
 - JSON, text, images, and optional MP4 file outputs remain available for backward compatibility. The Dify Cloud environment may require re-adding a tool node to refresh newly added output variables.
 - SDK dependency declarations remain aligned with Tongyi Marketplace. Upload/install speed in Dify Cloud is controlled by the plugin daemon, not by Fal URL parsing or model execution code.
 
-## v0.3.1: FFmpeg merge input simplification
+## v0.3.2: FFmpeg merge input simplification
 
 - Direct variable pickers: Video 1 and Video 2 are **required**; Video 3, Video 4 and Video 5 are optional. Required fields are also validated in Python to prevent accidental paid merge tasks.
 - Additional videos beyond the fifth go into optional **More Video URLs**, one HTTPS URL per line or a URL list.
 - Merge order: Video 1, Video 2, Video 3, Video 4, Video 5 (skipping empty optional fields), then the extra list.
+
+## v0.3.2: Simplified node outputs
+
+- Each generator and FFmpeg merge declares **one** URL output: `image_url` for Z-Image, `video_url` for all video tools; Check Job uses `url` to handle either media type.
+- Removed redundant `media_url`, standalone `status`, `request_id`, and `image_urls` variables. The compact `json` output keeps `request_id`, `model`, `status` and exactly one media URL.
+- On successful jobs the native `text` output no longer repeats the URL or polling progress. `text` is emitted only when the optional MP4 file attachment fails. Fal job polling and timeout behavior are unchanged.
+- Optional native `files` still delivers the actual image/MP4. Native Dify `text/files/json` output categories cannot be removed by the plugin.
+- Recreate existing tool nodes in Dify if output schema changes do not immediately appear.

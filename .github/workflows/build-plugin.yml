@@ -88,16 +88,27 @@ jobs:
               blob = next(msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.BLOB)
               assert blob.meta['mime_type'] == 'video/mp4'
               vars = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.VARIABLE]
-              assert len(vars) == 4
-              assert any(x.message.variable_name == 'video_url' for x in vars)
+              assert len(vars) == 1
+              assert vars[0].message.variable_name == 'video_url'
+              assert all(x.type != ToolInvokeMessage.MessageType.TEXT for x in messages)
               image_messages = list(fal_common.output_messages(
                   RealSdkOutputTool(), fal_common.MODELS['zimage'],
                   {'request_id':'image-done'},
                   {'images':[{'url':'https://v3.fal.media/files/dummy.jpg'}]},
                   include_file=True))
-              assert any(x.message.variable_name == 'image_url'
-                  for x in image_messages
-                  if x.type == ToolInvokeMessage.MessageType.VARIABLE)
+              image_vars = [x for x in image_messages
+                  if x.type == ToolInvokeMessage.MessageType.VARIABLE]
+              assert len(image_vars) == 1
+              assert image_vars[0].message.variable_name == 'image_url'
+              check_messages = list(fal_common.output_messages(
+                  RealSdkOutputTool(), fal_common.MODELS['t2v'],
+                  {'request_id': 'check-completed'},
+                  {'video': {'url': 'https://v3.fal.media/files/dummy.mp4'}},
+                  include_file=False, url_variable='url'))
+              check_vars = [x for x in check_messages
+                  if x.type == ToolInvokeMessage.MessageType.VARIABLE]
+              assert len(check_vars) == 1
+              assert check_vars[0].message.variable_name == 'url'
               print('Actual Dify SDK MP4 BLOB output test succeeded')
           finally:
               fal_common.media_bytes = original

@@ -14,21 +14,9 @@ description:
 output_schema:
   type: object
   properties:
-    video_url:
+    url:
       type: string
-      description: "Available on completed video tasks"
-    image_url:
-      type: string
-      description: "Available on completed image tasks"
-    media_url:
-      type: string
-      description: "Public output URL"
-    request_id:
-      type: string
-      description: "Fal request identifier"
-    status:
-      type: string
-      description: "Current or completed Fal task status"
+      description: "Completed Fal image or video HTTPS URL"
 parameters:
 - name: request_id
   type: string

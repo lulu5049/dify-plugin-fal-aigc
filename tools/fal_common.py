@@ -285,11 +285,16 @@ def collect_merge_video_urls(parameters):
         urls.extend(parse_video_urls(parameters['video_urls']))
     return urls
 
-def output_messages(tool, model, task, result, include_file=True, history=None):
-    """Yield structured JSON + text URL + optional Dify native file/image."""
+def output_messages(tool, model, task, result, include_file=True,
+                    history=None, url_variable=None):
+    """Emit compact JSON, one URL variable, and an optional native media file.
+
+    The platform's built-in text/files/json categories always exist.
+    Completed Fal jobs should never fail merely because Dify file delivery fails.
+    """
     if not result:
         raise FalError(f"Fal returned no completed result; request_id={task['request_id']}")
-    data = result.get('data', result)  # supports SDK-style wrappers, normal Fal REST body
+    data = result.get('data', result)
     if not isinstance(data, dict):
         raise FalError('Fal result is not a JSON object.')
     is_image = model == MODELS['zimage']
@@ -299,64 +304,40 @@ def output_messages(tool, model, task, result, include_file=True, history=None):
     urls = [m.get('url') for m in media if isinstance(m, dict) and m.get('url')]
     if not urls:
         raise FalError('Fal completed without a media URL.')
-    overview = {'request_id': task['request_id'], 'model': model, 'status': 'COMPLETED',
-                'image_url': urls[0] if is_image else '',
-                'image_urls': urls if is_image else [],
-                'status_history': history or [{'status': 'COMPLETED'}],
-                'video_url': '' if is_image else urls[0]}
+    media_key = 'image_url' if is_image else 'video_url'
+    overview = {'request_id': task['request_id'], 'model': model,
+                'status': 'COMPLETED', media_key: urls[0]}
     yield tool.create_json_message(overview)
-    for url in urls:
-        yield tool.create_text_message(url)
+    if include_file:
         if is_image:
-            if include_file:
+            for url in urls:
                 yield tool.create_image_message(url)
-        elif include_file:
+        else:
             try:
-                blob = media_bytes(url)
-                # Dify SDK >=0.9 accepts only (blob, meta), not save_as.
-                # The filename is advisory metadata; the MP4 URL is the
-                # canonical output even when the Dify frontend cannot preview it.
+                blob = media_bytes(urls[0])
                 yield tool.create_blob_message(
                     blob, meta={'mime_type': 'video/mp4', 'filename': 'fal_video.mp4'}
                 )
             except Exception as exc:
-                # A completed, paid Fal video must never be marked failed just
-                # because the optional Dify file attachment cannot be emitted.
+                # The completion JSON and URL variable remain valid even if the
+                # optional file attachment cannot be delivered to Dify.
                 yield tool.create_text_message(
-                    f'Video generated successfully at {url}; '
-                    f'optional Dify MP4 attachment unavailable ({type(exc).__name__}: {exc}).'
+                    f'Optional MP4 attachment unavailable ({type(exc).__name__}: {exc}). '
+                    'The video URL remains available in the URL variable and JSON.'
                 )
-    # Explicit tool output variables make workflow node chaining possible:
-    # text-to-video.video_url -> merge_videos.video_url_1, and so on.
-    yield tool.create_variable_message('request_id', task['request_id'])
-    yield tool.create_variable_message('status', 'COMPLETED')
-    yield tool.create_variable_message('media_url', urls[0])
-    if is_image:
-        yield tool.create_variable_message('image_url', urls[0])
-        yield tool.create_variable_message('image_urls', urls)
-    else:
-        yield tool.create_variable_message('video_url', urls[0])
+    yield tool.create_variable_message(url_variable or media_key, urls[0])
 
 
 def completed_generation(tool, model, payload, wait_seconds=540, include_file=True):
-    """Dify ToolInvokeMessage generator; never returns success before media.
+    """Wait for the final Fal result without cluttering Dify text with status logs.
 
-    Status text messages are emitted while polling. Whether Dify displays them
-    live is version-dependent, but they are retained as node tool text output.
+    Fal polling and timeouts still operate as before. On failure the exception
+    includes request_id so an existing paid task can be checked without retrying.
     """
     client = FalQueue(tool.runtime.credentials)
     task = client.submit(model, payload)
-    yield tool.create_text_message(f"Fal task submitted: request_id={task['request_id']}")
     for event in client.events(task, wait_seconds=wait_seconds):
-        if event['kind'] == 'status':
-            state = event['event']
-            msg = f"Fal status: {state['status']} | request_id={task['request_id']}"
-            if state['queue_position'] is not None:
-                msg += f" | queue_position={state['queue_position']}"
-            if state['last_log']:
-                msg += f" | {state['last_log']}"
-            yield tool.create_text_message(msg)
-        else:
+        if event['kind'] == 'result':
             yield from output_messages(tool, model, task, event['result'],
                                        include_file=include_file,
                                        history=event['history'])

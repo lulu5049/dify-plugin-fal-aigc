@@ -15,21 +15,7 @@ output_schema:
   properties:
     image_url:
       type: string
-      description: "Public HTTPS image URL for image-to-video input"
-    image_urls:
-      type: array
-      description: "Image URLs"
-      items:
-        type: string
-    media_url:
-      type: string
-      description: "Public HTTPS output URL"
-    request_id:
-      type: string
-      description: "Fal request identifier"
-    status:
-      type: string
-      description: "Final Fal task status"
+      description: "Image HTTPS URL for the next Image to Video node"
 parameters:
 - name: prompt
   type: string
