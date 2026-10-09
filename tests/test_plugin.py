@@ -18,6 +18,7 @@ if 'dify_plugin' not in sys.modules:
         def create_json_message(self, data): return ('json', data)
         def create_text_message(self, data): return ('text', data)
         def create_image_message(self, data): return ('image', data)
+        def create_variable_message(self, name, value): return ('variable', name, value)
         def create_blob_message(self, blob, meta=None):
             return ('blob', blob, meta)
     fake.Tool = Tool
@@ -71,8 +72,9 @@ def test_json_array_video_urls():
     urls = ['https://a.example/a.mp4', 'https://b.example/b.mp4', 'https://c.example/c.mp4']
     assert fal_common.parse_video_urls(json.dumps(urls)) == urls
     assert fal_common.parse_video_urls('\n'.join(urls)) == urls
-    with pytest.raises(fal_common.FalError):
-        fal_common.parse_video_urls('https://only.one/a.mp4')
+    assert fal_common.parse_video_urls('https://only.one/a.mp4') == ['https://only.one/a.mp4']
+    with pytest.raises(fal_common.FalError, match='At least two'):
+        fal_common.collect_merge_video_urls({'video_url_1':'https://only.one/a.mp4'})
 
 
 def test_refuse_nonpublic_urls():
@@ -98,6 +100,9 @@ def test_video_emits_mp4_blob(monkeypatch):
     assert msgs[2][1] == b'FAKE_MP4'
     assert msgs[2][2]['mime_type'] == 'video/mp4'
     assert msgs[2][2]['filename'] == 'fal_video.mp4'
+    assert ('variable', 'video_url', 'https://v3.fal.media/files/demo.mp4') in msgs
+    assert ('variable', 'status', 'COMPLETED') in msgs
+    assert ('variable', 'media_url', 'https://v3.fal.media/files/demo.mp4') in msgs
 
 
 def test_model_specific_payloads(monkeypatch):
@@ -207,3 +212,57 @@ def test_optional_mp4_attachment_error_preserves_completed_result(monkeypatch):
     assert msgs[0][1]['video_url'].endswith('done.mp4')
     assert msgs[1] == ('text', 'https://v3.fal.media/files/done.mp4')
     assert 'attachment unavailable' in msgs[2][1]
+
+
+def test_merge_from_individual_node_output_variables():
+    clip1 = 'https://v3b.fal.media/files/b/0aada9b3/clip1.mp4'
+    clip2 = 'https://v3b.fal.media/files/b/0aada9b3/clip2.mp4'
+    clip3 = 'https://v3b.fal.media/files/b/0aada9b3/clip3.mp4'
+    p = {'video_url_1':clip1, 'video_url_2':clip2,
+         'video_url_3':'', 'video_url_4':clip3}
+    assert fal_common.collect_merge_video_urls(p) == [clip1, clip2, clip3]
+
+
+def test_merge_malformed_escaped_paste():
+    clip = 'https://v3b.fal.media/files/b/0aada9b3/JmJXpr-6MF1hQUY5SsSEh_minimax-h3.mp4'
+    # Matches the kind of pasted string users get when quotes are missing
+    # and URL scheme is escaped as https\:.
+    pasted = '["https\\://' + clip[8:] + ',"https\\://' + clip[8:] + '"]'
+    assert fal_common.collect_merge_video_urls({'video_urls':pasted}) == [clip, clip]
+
+
+def test_merge_json_and_multiline_and_dify_variable_output():
+    urls = ['https://v3.fal.media/a.mp4','https://v3.fal.media/b.mp4']
+    assert fal_common.collect_merge_video_urls({'video_urls':'\n'.join(urls)}) == urls
+    assert fal_common.collect_merge_video_urls({'video_urls':json.dumps(urls)}) == urls
+    assert fal_common.collect_merge_video_urls({'video_urls':[{'video_url':urls[0]},{'video_url':urls[1]}]}) == urls
+    assert fal_common.collect_merge_video_urls({'video_url_1': urls[0], 'video_urls':urls[1]}) == urls
+
+
+def test_image_has_direct_image_url_variable():
+    tool = sys.modules['dify_plugin'].Tool()
+    msgs = list(fal_common.output_messages(
+        tool, fal_common.MODELS['zimage'], {'request_id':'img-1'},
+        {'images':[{'url':'https://v3.fal.media/picture.jpg'}]}, True))
+    assert ('variable', 'image_url', 'https://v3.fal.media/picture.jpg') in msgs
+    assert ('variable', 'media_url', 'https://v3.fal.media/picture.jpg') in msgs
+    assert ('variable', 'image_urls', ['https://v3.fal.media/picture.jpg']) in msgs
+    assert ('variable', 'request_id', 'img-1') in msgs
+
+
+def test_output_schema_declares_all_direct_variables():
+    from pathlib import Path
+    import yaml
+    root=Path(__file__).resolve().parents[1]
+    for tool in ['text_to_video','image_to_video','generate_image','merge_videos','check_job']:
+        config=yaml.safe_load((root/'tools'/f'{tool}.yaml').read_text())
+        props=config['output_schema']['properties']
+        assert props['media_url']['type']=='string'
+        assert props['request_id']['type']=='string'
+        assert ('image_url' if tool=='generate_image' else 'video_url') in props
+        assert 'select_on' not in str(config)
+        assert 'show_on' not in str(config)
+    merge=yaml.safe_load((root/'tools/merge_videos.yaml').read_text())
+    p={x['name']:x for x in merge['parameters']}
+    assert all(f'video_url_{i}' in p for i in range(1,9))
+    assert p['video_urls']['required'] is False
