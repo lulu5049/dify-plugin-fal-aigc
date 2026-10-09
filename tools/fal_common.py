@@ -259,11 +259,19 @@ def output_messages(tool, model, task, result, include_file=True, history=None):
         elif include_file:
             try:
                 blob = media_bytes(url)
-                yield tool.create_blob_message(blob, meta={'mime_type': 'video/mp4',
-                                                          'filename': 'fal_video.mp4'},
-                                               save_as='fal_video.mp4')
-            except (requests.RequestException, FalError, ValueError) as exc:
-                yield tool.create_text_message(f'Video URL is valid but Dify file output was skipped: {exc}')
+                # Dify SDK >=0.9 accepts only (blob, meta), not save_as.
+                # The filename is advisory metadata; the MP4 URL is the
+                # canonical output even when the Dify frontend cannot preview it.
+                yield tool.create_blob_message(
+                    blob, meta={'mime_type': 'video/mp4', 'filename': 'fal_video.mp4'}
+                )
+            except Exception as exc:
+                # A completed, paid Fal video must never be marked failed just
+                # because the optional Dify file attachment cannot be emitted.
+                yield tool.create_text_message(
+                    f'Video generated successfully at {url}; '
+                    f'optional Dify MP4 attachment unavailable ({type(exc).__name__}: {exc}).'
+                )
 
 
 def completed_generation(tool, model, payload, wait_seconds=540, include_file=True):

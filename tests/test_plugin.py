@@ -18,8 +18,8 @@ if 'dify_plugin' not in sys.modules:
         def create_json_message(self, data): return ('json', data)
         def create_text_message(self, data): return ('text', data)
         def create_image_message(self, data): return ('image', data)
-        def create_blob_message(self, blob, meta=None, save_as=''):
-            return ('blob', blob, meta, save_as)
+        def create_blob_message(self, blob, meta=None):
+            return ('blob', blob, meta)
     fake.Tool = Tool
     sys.modules['dify_plugin'] = fake
     fake_ent = types.ModuleType('dify_plugin.entities')
@@ -95,7 +95,9 @@ def test_video_emits_mp4_blob(monkeypatch):
                      {'video': {'url': 'https://v3.fal.media/files/demo.mp4'}}, True))
     assert msgs[0][1]['video_url'].endswith('demo.mp4')
     assert msgs[2][0] == 'blob'
+    assert msgs[2][1] == b'FAKE_MP4'
     assert msgs[2][2]['mime_type'] == 'video/mp4'
+    assert msgs[2][2]['filename'] == 'fal_video.mp4'
 
 
 def test_model_specific_payloads(monkeypatch):
@@ -189,3 +191,19 @@ def test_yaml_and_resources():
             if p['type'] == 'select':
                 assert p['options']
     assert (ROOT / '_assets/icon.svg').is_file()
+
+def test_optional_mp4_attachment_error_preserves_completed_result(monkeypatch):
+    """A paid, completed Fal job cannot fail because Dify rejects the optional blob."""
+    monkeypatch.setattr(fal_common, 'media_bytes', lambda url: b'FAKE_MP4')
+    class ToolWithoutBlob(sys.modules['dify_plugin'].Tool):
+        def create_blob_message(self, blob, meta=None):
+            raise TypeError('Dify file output unavailable')
+    msgs = list(fal_common.output_messages(
+        ToolWithoutBlob(), fal_common.MODELS['t2v'],
+        {'request_id': 'done-job'},
+        {'video': {'url': 'https://v3.fal.media/files/done.mp4'}}, True))
+    assert msgs[0][0] == 'json'
+    assert msgs[0][1]['status'] == 'COMPLETED'
+    assert msgs[0][1]['video_url'].endswith('done.mp4')
+    assert msgs[1] == ('text', 'https://v3.fal.media/files/done.mp4')
+    assert 'attachment unavailable' in msgs[2][1]

@@ -1,4 +1,4 @@
-# Fal AIGC for Dify (v0.2.1)
+# Fal AIGC for Dify (v0.2.2)
 
 中文优先 · A Dify Tool plugin for [fal.ai](https://fal.ai).
 
@@ -16,7 +16,7 @@ Image/video/merge nodes: submit to Fal queue, poll until COMPLETED and fetch the
 
 ## Setup
 
-1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.2.1.difypkg`.
+1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.2.2.difypkg`.
 2. Dify → Plugins → Install Plugin → Local File; configure Fal API Key.
 3. Add the tool node. It returns URL, JSON metadata, and an image preview or MP4 Dify File (up to 55MB) when `return_file=true`.
 4. Connect `image_url` to H3 Max `image_url`, or add video URLs in a JSON array to FFmpeg merge.
@@ -50,3 +50,10 @@ Create public repo `lulu5049/dify-plugin-fal-aigc` (or change `repo` in manifest
 - Generated media nodes wait for final success and provide Fal queue status messages; Dify may buffer progress output, depending on the frontend version.
 
 Based on the TongYi AIGC branch merged by PR #3, which removed unsupported dynamic `show_on` conditions. This Fal plugin contains no such conditions.
+
+## v0.2.2: Dify Cloud MP4 output fix
+
+- Removed the unsupported `save_as` keyword from Dify SDK `create_blob_message` (the v0.9–v0.10 signature accepts only `blob` and `meta`).
+- MP4 messages use the `video/mp4` MIME type and optional filename metadata.
+- If the optional Dify attachment fails, the already-completed paid generation still succeeds with its Fal video URL and an explicit warning; it does not submit another generation task.
+- CI tests the output path using the actual installed Dify SDK, preventing fake SDK mocks from masking signature differences.

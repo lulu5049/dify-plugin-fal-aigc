@@ -63,6 +63,30 @@ jobs:
                       print('IMPORTED:', module)
           import dify_plugin
           import main
+          from dify_plugin import Tool
+          from dify_plugin.entities.tool import ToolInvokeMessage
+          from tools import fal_common
+          import inspect
+          assert 'meta' in inspect.signature(Tool.create_blob_message).parameters
+          class RealSdkOutputTool:
+              response_type = ToolInvokeMessage
+              create_blob_message = Tool.create_blob_message
+              create_json_message = Tool.create_json_message
+              create_text_message = Tool.create_text_message
+          original = fal_common.media_bytes
+          try:
+              fal_common.media_bytes = lambda url: b'dummy_mp4'
+              messages = list(fal_common.output_messages(
+                  RealSdkOutputTool(), fal_common.MODELS['t2v'],
+                  {'request_id': 'test-completed'},
+                  {'video': {'url': 'https://v3.fal.media/files/dummy.mp4'}},
+                  include_file=True))
+              assert len(messages) == 3
+              assert messages[-1].type == ToolInvokeMessage.MessageType.BLOB
+              assert messages[-1].meta['mime_type'] == 'video/mp4'
+              print('Actual Dify SDK MP4 BLOB output test succeeded')
+          finally:
+              fal_common.media_bytes = original
           print('Dify SDK and plugin runtime imports succeeded')
           PY
       - name: Download verified official Dify Plugin CLI
