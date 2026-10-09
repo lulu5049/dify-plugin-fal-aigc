@@ -1,37 +1,91 @@
 name: Build Dify Plugin
+
 on:
   workflow_dispatch:
   push:
     branches: [main]
     tags: ["v*"]
+  pull_request:
+    branches: [main]
+
 permissions:
   contents: read
+
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout plugin source
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate Python syntax and manifests
+      - name: Read plugin package name
+        id: meta
+        shell: bash
         run: |
+          set -euo pipefail
+          VERSION="$(awk '/^version:/ {print $2; exit}' manifest.yaml | tr -d '\"')"
+          echo "name=fal_aigc_${VERSION}.difypkg" >> "$GITHUB_OUTPUT"
+      - name: Create runtime environment and install plugin dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/fal-plugin-venv"
+          source "$RUNNER_TEMP/fal-plugin-venv/bin/activate"
+          python -m pip install --disable-pip-version-check -r requirements.txt pytest pyyaml
+      - name: Check YAML compatibility, run unit tests and import plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/fal-plugin-venv/bin/activate"
           python -m compileall -q main.py provider tools
-          python -m pip install -q pytest pyyaml requests
           python -m pytest -q tests
-      - name: Download official Dify Plugin CLI
+          python - <<'PY'
+          import importlib
+          import pathlib
+          import yaml
+          paths = ['manifest.yaml', 'provider/fal_aigc.yaml']
+          paths += [str(p) for p in pathlib.Path('tools').glob('*.yaml')]
+          for path in paths:
+              doc = yaml.safe_load(pathlib.Path(path).read_text())
+              if path.startswith('tools/'):
+                  for field in doc.get('parameters', []):
+                      for forbidden in ('show_on', 'select_on'):
+                          if forbidden in field:
+                              raise ValueError(f'{path} contains unsupported {forbidden}')
+          for folder in ('tools', 'provider'):
+              for path in sorted(pathlib.Path(folder).glob('*.py')):
+                  if path.name != '__init__.py':
+                      module = '.'.join(path.with_suffix('').parts)
+                      importlib.import_module(module)
+                      print('IMPORTED:', module)
+          import dify_plugin
+          import main
+          print('Dify SDK and plugin runtime imports succeeded')
+          PY
+      - name: Download verified official Dify Plugin CLI
+        shell: bash
         run: |
-          curl -fL --retry 3 -o "$RUNNER_TEMP/dify-plugin" \
-            https://github.com/langgenius/dify-plugin-daemon/releases/download/0.6.10/dify-plugin-linux-amd64
+          set -euo pipefail
+          curl -fL --retry 3 \
+            "https://github.com/langgenius/dify-plugin-daemon/releases/download/0.6.10/dify-plugin-linux-amd64" \
+            -o "$RUNNER_TEMP/dify-plugin"
+          echo "0cef74bcae375a4337c2ff7d42e4787717981a795e1c23cf56bb27ec07ec8304  $RUNNER_TEMP/dify-plugin" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/dify-plugin"
           "$RUNNER_TEMP/dify-plugin" version
-      - name: Package .difypkg
+      - name: Package Dify plugin
+        shell: bash
         run: |
-          "$RUNNER_TEMP/dify-plugin" plugin package . -o fal_aigc_0.2.0.difypkg
-          test -s fal_aigc_0.2.0.difypkg
-      - name: Upload downloadable package
+          set -euo pipefail
+          "$RUNNER_TEMP/dify-plugin" plugin package . -o "${{ steps.meta.outputs.name }}"
+          test -s "${{ steps.meta.outputs.name }}"
+          ls -lh "${{ steps.meta.outputs.name }}"
+      - name: Upload plugin package
         uses: actions/upload-artifact@v4
         with:
-          name: fal_aigc_0.2.0-difypkg
-          path: fal_aigc_0.2.0.difypkg
+          name: ${{ steps.meta.outputs.name }}
+          path: ${{ steps.meta.outputs.name }}
           if-no-files-found: error
+          retention-days: 30

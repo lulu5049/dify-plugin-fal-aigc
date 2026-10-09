@@ -6,3 +6,6 @@ tests/**
 *.pyc
 .env
 *.difypkg
+
+.venv/**
+.pytest_cache/**

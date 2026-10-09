@@ -1,4 +1,4 @@
-# Fal AIGC for Dify (v0.2.0)
+# Fal AIGC for Dify (v0.2.1)
 
 中文优先 · A Dify Tool plugin for [fal.ai](https://fal.ai).
 
@@ -16,7 +16,7 @@ Image/video/merge nodes: submit to Fal queue, poll until COMPLETED and fetch the
 
 ## Setup
 
-1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.2.0.difypkg`.
+1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.2.1.difypkg`.
 2. Dify → Plugins → Install Plugin → Local File; configure Fal API Key.
 3. Add the tool node. It returns URL, JSON metadata, and an image preview or MP4 Dify File (up to 55MB) when `return_file=true`.
 4. Connect `image_url` to H3 Max `image_url`, or add video URLs in a JSON array to FFmpeg merge.
@@ -40,3 +40,13 @@ Create public repo `lulu5049/dify-plugin-fal-aigc` (or change `repo` in manifest
 - Media uses HTTPS; URL parsing rejects localhost / raw IP literals and redirects when downloading finished MP4.
 - Input images as Dify `file` are base64 encoded for the Fal API; avoid files over 15MB.
 - API cost is determined by Fal billing, not the plugin.
+
+## Installation compatibility and diagnostics
+
+- The tools use ordinary Dify select fields with static options only. No `show_on` or `select_on` conditional parameter declarations.
+- Dify's CLI packaging only verifies package structure; GitHub Actions also installs the actual Dify SDK and dependencies and tests all runtime module imports, mirroring the current TongYi AIGC repository build workflow.
+- The plugin requires a compatible Dify runtime for the pinned SDK major/minor range (dify-plugin >=0.9, <0.11). Older Dify editions may require a lower SDK version.
+- Slow *installation* usually happens in the plugin daemon when Python dependencies are fetched, not because Fal image/video tasks are slow. Inspect plugin daemon installation logs, Dify version, outbound access to PyPI, and allocated CPU/memory. A successful build cannot guarantee a particular Dify deployment's installation will finish.
+- Generated media nodes wait for final success and provide Fal queue status messages; Dify may buffer progress output, depending on the frontend version.
+
+Based on the TongYi AIGC branch merged by PR #3, which removed unsupported dynamic `show_on` conditions. This Fal plugin contains no such conditions.

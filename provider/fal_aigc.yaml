@@ -8,9 +8,6 @@ identity:
     en_US: Fal image and video generation + video merger
     zh_Hans: Fal 图片视频生成与多视频拼接
   icon: icon.svg
-  tags:
-    - image
-    - videos
 credentials_for_provider:
   api_key:
     type: secret-input
