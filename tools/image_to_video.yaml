@@ -150,18 +150,6 @@ parameters:
     zh_Hans: 一直等待最终结果；超时将让节点报错，并保留Fal任务ID。
   llm_description: Max polling wait.
   form: form
-- name: return_file
-  type: boolean
-  required: false
-  default: true
-  label:
-    en_US: Return MP4 File
-    zh_Hans: 返回MP4文件
-  human_description:
-    en_US: Output an MP4 as a Dify file, size capped at 55 MB.
-    zh_Hans: 输出可被后续节点引用的Dify文件，大小上限55MB。
-  llm_description: Emit MP4 file.
-  form: form
 extra:
   python:
     source: tools/image_to_video.py

@@ -27,6 +27,6 @@ class GenerateImageTool(Tool):
             yield from completed_generation(
                 self, MODELS['zimage'], payload,
                 wait_seconds=tool_parameters.get('wait_seconds', 540),
-                include_file=tool_parameters.get('return_file', True) is not False)
+                include_image_preview=tool_parameters.get('return_file', True) is not False)
         except Exception as exc:
             raise ValueError(f'Fal Z-Image Turbo failed: {exc}') from exc

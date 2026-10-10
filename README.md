@@ -1,4 +1,4 @@
-# Fal AIGC for Dify (v0.3.2)
+# Fal AIGC for Dify (v0.3.3)
 
 中文优先 · A Dify Tool plugin for [fal.ai](https://fal.ai).
 
@@ -10,16 +10,16 @@
 
 ## **Completed-only behavior**
 
-Image/video/merge nodes: submit to Fal queue, poll until COMPLETED and fetch the actual result, then finish the node. They never return an `IN_PROGRESS` result as success. The tool emits status text on every state transition (and occasional heartbeats) while running. The finished node JSON includes `status=COMPLETED`, `status_history`, URL and request ID. If the Fal job fails or the wait deadline passes, a **Dify node error** is raised with request ID. An errored/timeout Dify node does NOT mean Fal canceled the job! Use **Check Fal Job** to avoid re-paying for duplicates.
+Image/video/merge nodes: submit to Fal queue, poll until COMPLETED and fetch the actual result, then finish the node. They never return an `IN_PROGRESS` result as success. Queue polling happens internally without cluttering Dify text output. The finished node JSON includes `status=COMPLETED`, the URL and the Fal request ID. If the Fal job fails or the wait deadline passes, a **Dify node error** is raised with request ID. An errored/timeout Dify node does NOT mean Fal canceled the job! Use **Check Fal Job** to avoid re-paying for duplicates.
 
 **Important Dify UI limitation:** A plugin cannot change the native Workflow node status badge. Dify displays the node as Running until it returns/throws, but real-time rendering of incremental tool text/log messages is version dependent. For a guaranteed live queue progress bar, a separate status-polling workflow/UI is required. Final run logs include the observed states.
 
 ## Setup
 
-1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.3.2.difypkg`.
+1. Download `.difypkg` from GitHub Actions or build with `dify-plugin plugin package . -o fal_aigc_0.3.3.difypkg`.
 2. Dify → Plugins → Install Plugin → Local File; configure Fal API Key.
-3. Add the tool node. It returns URL, JSON metadata, and an image preview or MP4 Dify File (up to 55MB) when `return_file=true`.
-4. Connect `image_url` to H3 Max `image_url`, or add video URLs in a JSON array to FFmpeg merge.
+3. Add a tool node. Videos return `video_url` and JSON metadata with no MP4 download or Dify file conversion. Image generation can return an image preview.
+4. Connect `image_url` to Image to Video; connect each `video_url` to one of FFmpeg's five numbered URL inputs (first two required).
 
 Default `wait_seconds=540` (9 minutes), max 840 (14 minutes); the SDK request timeout is configured to 900 sec. **Your Dify edition, plugin daemon, ingress, and reverse proxy may impose shorter limits.** If so, reduce node timeout and use the Check Fal Job tool. No mechanism can guarantee unbounded blocking across a platform's timeouts.
 
@@ -37,7 +37,7 @@ Create public repo `lulu5049/dify-plugin-fal-aigc` (or change `repo` in manifest
 ## Security
 
 - Fal API Key is stored as Dify plugin secret; it is never logged.
-- Media uses HTTPS; URL parsing rejects localhost / raw IP literals and redirects when downloading finished MP4.
+- Video URLs are passed through as HTTPS links without downloading or proxying MP4 media.
 - Input images as Dify `file` are base64 encoded for the Fal API; avoid files over 15MB.
 - API cost is determined by Fal billing, not the plugin.
 
@@ -88,3 +88,11 @@ Based on the TongYi AIGC branch merged by PR #3, which removed unsupported dynam
 - On successful jobs the native `text` output no longer repeats the URL or polling progress. `text` is emitted only when the optional MP4 file attachment fails. Fal job polling and timeout behavior are unchanged.
 - Optional native `files` still delivers the actual image/MP4. Native Dify `text/files/json` output categories cannot be removed by the plugin.
 - Recreate existing tool nodes in Dify if output schema changes do not immediately appear.
+
+## v0.3.3: URL-only video output (current behavior)
+
+- Text to Video, Image to Video and FFmpeg Merge return `video_url` and compact JSON, without downloading MP4 bytes, reuploading files or creating Dify Blob messages.
+- Removed `Return MP4 File` controls and the entire finished-video media downloader.
+- Check Job returns the completed image/video `url` without any MP4 transfer. Image generation still supports optional native image preview.
+- Dify may show built-in `text`, `files`, `json` fields even when nothing is emitted for video `text/files`.
+- Previewing video links depends on the current Dify user interface and browser; the plugin returns the Fal URL directly. Re-add existing Dify nodes after plugin upgrade if parameters are stale.

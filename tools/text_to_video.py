@@ -22,7 +22,6 @@ class TextToVideoTool(Tool):
                 raise FalError('Duration must be between 2 and 15 seconds.')
             yield from completed_generation(
                 self, MODELS['t2v'], payload,
-                wait_seconds=tool_parameters.get('wait_seconds', 540),
-                include_file=tool_parameters.get('return_file', True) is not False)
+                wait_seconds=tool_parameters.get('wait_seconds', 540))
         except Exception as exc:
             raise ValueError(f'Fal text-to-video failed: {exc}') from exc

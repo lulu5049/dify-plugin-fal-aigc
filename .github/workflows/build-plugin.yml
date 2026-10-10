@@ -66,52 +66,37 @@ jobs:
           from dify_plugin import Tool
           from dify_plugin.entities.tool import ToolInvokeMessage
           from tools import fal_common
-          import inspect
-          assert 'meta' in inspect.signature(Tool.create_blob_message).parameters
           class RealSdkOutputTool:
               response_type = ToolInvokeMessage
-              create_blob_message = Tool.create_blob_message
               create_json_message = Tool.create_json_message
               create_text_message = Tool.create_text_message
               create_image_message = Tool.create_image_message
               create_variable_message = Tool.create_variable_message
-          original = fal_common.media_bytes
-          try:
-              fal_common.media_bytes = lambda url: b'dummy_mp4'
+          for model in (fal_common.MODELS['t2v'], fal_common.MODELS['i2v'],
+                        fal_common.MODELS['merge']):
               messages = list(fal_common.output_messages(
-                  RealSdkOutputTool(), fal_common.MODELS['t2v'],
-                  {'request_id': 'test-completed'},
-                  {'video': {'url': 'https://v3.fal.media/files/dummy.mp4'}},
-                  include_file=True))
-              kinds = [msg.type for msg in messages]
-              assert ToolInvokeMessage.MessageType.BLOB in kinds
-              blob = next(msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.BLOB)
-              assert blob.meta['mime_type'] == 'video/mp4'
-              vars = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.VARIABLE]
-              assert len(vars) == 1
-              assert vars[0].message.variable_name == 'video_url'
-              assert all(x.type != ToolInvokeMessage.MessageType.TEXT for x in messages)
-              image_messages = list(fal_common.output_messages(
-                  RealSdkOutputTool(), fal_common.MODELS['zimage'],
-                  {'request_id':'image-done'},
-                  {'images':[{'url':'https://v3.fal.media/files/dummy.jpg'}]},
-                  include_file=True))
-              image_vars = [x for x in image_messages
-                  if x.type == ToolInvokeMessage.MessageType.VARIABLE]
-              assert len(image_vars) == 1
-              assert image_vars[0].message.variable_name == 'image_url'
-              check_messages = list(fal_common.output_messages(
-                  RealSdkOutputTool(), fal_common.MODELS['t2v'],
-                  {'request_id': 'check-completed'},
-                  {'video': {'url': 'https://v3.fal.media/files/dummy.mp4'}},
-                  include_file=False, url_variable='url'))
-              check_vars = [x for x in check_messages
-                  if x.type == ToolInvokeMessage.MessageType.VARIABLE]
-              assert len(check_vars) == 1
-              assert check_vars[0].message.variable_name == 'url'
-              print('Actual Dify SDK MP4 BLOB output test succeeded')
-          finally:
-              fal_common.media_bytes = original
+                  RealSdkOutputTool(), model, {'request_id':'test-completed'},
+                  {'video':{'url':'https://v3.fal.media/files/dummy.mp4'}}))
+              assert [x.type for x in messages] == [
+                  ToolInvokeMessage.MessageType.JSON,
+                  ToolInvokeMessage.MessageType.VARIABLE]
+              assert messages[-1].message.variable_name == 'video_url'
+          image_messages = list(fal_common.output_messages(
+              RealSdkOutputTool(), fal_common.MODELS['zimage'],
+              {'request_id':'image-done'},
+              {'images':[{'url':'https://v3.fal.media/files/dummy.jpg'}]}))
+          assert [x.type for x in image_messages] == [
+              ToolInvokeMessage.MessageType.JSON,
+              ToolInvokeMessage.MessageType.IMAGE,
+              ToolInvokeMessage.MessageType.VARIABLE]
+          assert image_messages[-1].message.variable_name == 'image_url'
+          job_messages = list(fal_common.output_messages(
+              RealSdkOutputTool(), fal_common.MODELS['merge'],
+              {'request_id':'check-done'},
+              {'video':{'url':'https://v3.fal.media/files/dummy.mp4'}},
+              url_variable='url'))
+          assert job_messages[-1].message.variable_name == 'url'
+          print('Real Dify SDK URL-only video and image-preview tests succeeded')
           print('Dify SDK and plugin runtime imports succeeded')
           PY
       - name: Download verified official Dify Plugin CLI

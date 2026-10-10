@@ -108,18 +108,6 @@ parameters:
     zh_Hans: 一直等待最终结果；超时将让节点报错，并保留Fal任务ID。
   llm_description: Max polling wait.
   form: form
-- name: return_file
-  type: boolean
-  required: false
-  default: true
-  label:
-    en_US: Return MP4 File
-    zh_Hans: 返回MP4文件
-  human_description:
-    en_US: Also download the finished MP4 as a Dify file (up to 55 MB).
-    zh_Hans: 同时将合成后的MP4返回为Dify文件（最大55MB）。
-  llm_description: Emit MP4 file.
-  form: form
 extra:
   python:
     source: tools/merge_videos.py

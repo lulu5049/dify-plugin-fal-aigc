@@ -15,7 +15,6 @@ class MergeVideosTool(Tool):
             # Omitting resolution preserves the input dimensions and avoids unwanted upscale.
             yield from completed_generation(
                 self, MODELS['merge'], payload,
-                wait_seconds=tool_parameters.get('wait_seconds', 540),
-                include_file=tool_parameters.get('return_file', True) is not False)
+                wait_seconds=tool_parameters.get('wait_seconds', 540))
         except Exception as exc:
             raise ValueError(f'Fal merge-videos failed: {exc}') from exc

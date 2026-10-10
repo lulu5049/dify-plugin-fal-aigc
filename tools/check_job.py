@@ -16,7 +16,6 @@ class CheckJobTool(Tool):
             status = str(state.get('status') or 'UNKNOWN').upper()
             if status == 'COMPLETED':
                 yield from output_messages(self, model, task, client.result(task),
-                                           include_file=tool_parameters.get('return_file', True) is not False,
                                            url_variable='url')
             elif status in ('IN_PROGRESS', 'IN_QUEUE'):
                 yield self.create_json_message({'request_id': task['request_id'], 'model': model,

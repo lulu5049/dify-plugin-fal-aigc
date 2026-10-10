@@ -26,7 +26,6 @@ class ImageToVideoTool(Tool):
                 payload['end_image_url'] = last
             yield from completed_generation(
                 self, MODELS['i2v'], payload,
-                wait_seconds=tool_parameters.get('wait_seconds', 540),
-                include_file=tool_parameters.get('return_file', True) is not False)
+                wait_seconds=tool_parameters.get('wait_seconds', 540))
         except Exception as exc:
             raise ValueError(f'Fal image-to-video failed: {exc}') from exc

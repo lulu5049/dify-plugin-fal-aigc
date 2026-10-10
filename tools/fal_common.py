@@ -5,7 +5,6 @@ No Fal key is logged. Requests use queue.fal.run, not the synchronous endpoint.
 import base64
 import ipaddress
 import json
-import mimetypes
 import re
 import time
 from urllib.parse import urlsplit
@@ -19,7 +18,6 @@ MODELS = {
     'merge': 'fal-ai/ffmpeg-api/merge-videos',
     'zimage': 'fal-ai/z-image/turbo',
 }
-MAX_MEDIA_MB = 55
 MAX_WAIT_SECONDS = 840
 
 
@@ -166,27 +164,6 @@ def _is_public_https_url(value):
         return True
 
 
-def media_bytes(url, max_mb=MAX_MEDIA_MB):
-    """Fetch completed Fal output for Dify blob; protect RAM and reject local URLs."""
-    if not isinstance(url, str) or not _is_public_https_url(url):
-        raise FalError('Invalid or non-public HTTPS media URL.')
-    limit = max_mb * 1024 * 1024
-    # Disable HTTP redirects to avoid redirected local-service fetching.
-    with requests.get(url, timeout=(15, 90), stream=True, allow_redirects=False) as response:
-        if not (200 <= response.status_code < 300):
-            raise FalError(f'Media download failed: HTTP {response.status_code}')
-        length = int(response.headers.get('Content-Length') or 0)
-        if length > limit:
-            raise FalError(f'Media exceeds the {max_mb} MB plugin file limit (URL is still available).')
-        chunks, size = [], 0
-        for chunk in response.iter_content(chunk_size=1024 * 1024):
-            size += len(chunk)
-            if size > limit:
-                raise FalError(f'Media exceeds the {max_mb} MB plugin file limit (URL is still available).')
-            chunks.append(chunk)
-        return b''.join(chunks)
-
-
 def to_image_url(file_obj, url=''):
     """Convert a Dify uploaded file to Fal's accepted data URI (no public Dify URL needed)."""
     if file_obj is not None:
@@ -285,12 +262,10 @@ def collect_merge_video_urls(parameters):
         urls.extend(parse_video_urls(parameters['video_urls']))
     return urls
 
-def output_messages(tool, model, task, result, include_file=True,
-                    history=None, url_variable=None):
-    """Emit compact JSON, one URL variable, and an optional native media file.
+def output_messages(tool, model, task, result, include_image_preview=True, url_variable=None):
+    """Return a compact JSON result and one URL variable; optionally preview images.
 
-    The platform's built-in text/files/json categories always exist.
-    Completed Fal jobs should never fail merely because Dify file delivery fails.
+    Video media is never downloaded, converted, or returned as MP4 BLOB files.
     """
     if not result:
         raise FalError(f"Fal returned no completed result; request_id={task['request_id']}")
@@ -308,27 +283,13 @@ def output_messages(tool, model, task, result, include_file=True,
     overview = {'request_id': task['request_id'], 'model': model,
                 'status': 'COMPLETED', media_key: urls[0]}
     yield tool.create_json_message(overview)
-    if include_file:
-        if is_image:
-            for url in urls:
-                yield tool.create_image_message(url)
-        else:
-            try:
-                blob = media_bytes(urls[0])
-                yield tool.create_blob_message(
-                    blob, meta={'mime_type': 'video/mp4', 'filename': 'fal_video.mp4'}
-                )
-            except Exception as exc:
-                # The completion JSON and URL variable remain valid even if the
-                # optional file attachment cannot be delivered to Dify.
-                yield tool.create_text_message(
-                    f'Optional MP4 attachment unavailable ({type(exc).__name__}: {exc}). '
-                    'The video URL remains available in the URL variable and JSON.'
-                )
+    if is_image and include_image_preview:
+        for url in urls:
+            yield tool.create_image_message(url)
     yield tool.create_variable_message(url_variable or media_key, urls[0])
 
 
-def completed_generation(tool, model, payload, wait_seconds=540, include_file=True):
+def completed_generation(tool, model, payload, wait_seconds=540, include_image_preview=True):
     """Wait for the final Fal result without cluttering Dify text with status logs.
 
     Fal polling and timeouts still operate as before. On failure the exception
@@ -339,5 +300,4 @@ def completed_generation(tool, model, payload, wait_seconds=540, include_file=Tr
     for event in client.events(task, wait_seconds=wait_seconds):
         if event['kind'] == 'result':
             yield from output_messages(tool, model, task, event['result'],
-                                       include_file=include_file,
-                                       history=event['history'])
+                                       include_image_preview=include_image_preview)

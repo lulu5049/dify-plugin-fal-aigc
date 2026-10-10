@@ -57,18 +57,6 @@ parameters:
     label:
       en_US: Z-Image Turbo
       zh_Hans: Z-Image Turbo
-- name: return_file
-  type: boolean
-  required: false
-  default: true
-  label:
-    en_US: Return Media File
-    zh_Hans: 返回媒体文件
-  human_description:
-    en_US: Emit Dify media output when ready.
-    zh_Hans: 完成后同时输出Dify媒体文件。
-  llm_description: Emit native media.
-  form: form
 extra:
   python:
     source: tools/check_job.py
